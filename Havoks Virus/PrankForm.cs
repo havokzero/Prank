@@ -3,207 +3,137 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.IO;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Timer = System.Windows.Forms.Timer;
-
 
 namespace Havoks_Virus
 {
     public class PrankForm : Form
     {
-        private System.ComponentModel.IContainer components = null;
         private PictureBox pictureBox = new PictureBox();
-        private List<Image> gifFrames = new List<Image>();
-        private int currentFrame = 0;
-        private Timer moveTimer = new Timer();
-        private static int formCount = 0;
-        private const int maxForms = 14;
-        private List<Image> loadedImages = new List<Image>();
+        private List<Image> gifFrames = new List<Image>(); // Stores each frame of the GIF
+        private int currentFrame = 0; // Tracks the current frame of the GIF
+        private Timer moveTimer = new Timer(); // Timer for controlling movement speed
+        private static int formCount = 0; // Keep track of the number of forms
+        private const int maxForms = 10;  // Maximum number of forms allowed ..... Don't actually kill their PC 6-10 seem to work perfect
+        private List<Image> loadedImages = new List<Image>(); // To store loaded images
         private static List<PrankForm> openForms = new List<PrankForm>();
         private Timer wallpaperTimer = new Timer();
         private string originalWallpaperPath;
+        //private Audio backgroundAudio;
+        //private Audio sharedAudio = new Audio();
+        private static Audio sharedAudio = new Audio(); //This is the correct way to construct the audio as the two lines above create overlaps 
         private Random random = new Random();
-        private static Audio sharedAudio = new Audio();
-        private Audio audio;
-        // diagnostic tools 
-        private Timer diagnosticTimer;
-        private int formCounter = 0;
-        private Timer createFormTimer = new Timer();
-        private static bool jobSearchTabsOpened = false;
-        private Mouse myMouseHandler;
-
 
 
         public PrankForm()
         {
             InitializeComponent();
             SetupMovementTimer();
-            originalWallpaperPath = GetOriginalWallpaperPath();
+            originalWallpaperPath = GetOriginalWallpaperPath(); // Store original wallpaper path
             ExtractFramesFromGif("Media/blade.gif");
-            LoadContentAsync();
+            LoadContentAsync(); // Load content asynchronously
             SetupTimer();
             SetupWallpaperChangeTimer();
+            //sharedAudio = new Audio(); // Initialize the background audio
+            //sharedAudio.Start(); // Start playing background audio
 
-            //sharedAudio = new Audio(); // Initialize sharedAudio here
+            openForms.Add(this); // Track this form
+            formCount++; // Increment the global form count
 
-            ManageFormInstances(); // Handle the creation and organization of multiple forms
-            SetInitialWallpaper();
 
-            createFormTimer.Interval = 5000; // 5 seconds delay                         //  Testing 
-            createFormTimer.Tick += (sender, e) => CreateFormWithRandomDelay();        //   Random
-            createFormTimer.Start();                                                  //    Delay
+            this.Size = new Size(200, 200);
 
-            if (formCount == 0)  // Only start spawning additional forms for the first instance
+            // Only initiate additional forms if under the maximum limit
+            if (formCount < maxForms)
             {
-                SpawnAdditionalForm();  // Begin asynchronous form creation
+                // Only create additional forms from the first form
+                if (openForms.Count == 1)
+                {
+                    CreateFormsForAllScreens();
+                }
+
+                // Setup timer to spawn additional forms
+                Timer spawnTimer = new Timer();
+                spawnTimer.Interval = 8000; // 8 seconds, adjust as needed
+                spawnTimer.Tick += (sender, e) => SpawnAdditionalForm();
+                spawnTimer.Start();
+
+                // Setup wallpaper change timer
+                Timer wallpaperTimer = new Timer();
+                wallpaperTimer.Interval = 30000; // 30 seconds
+                wallpaperTimer.Tick += (sender, e) => ChangeWallpaper();
+                wallpaperTimer.Start();
+
+                // Set initial wallpaper
+                string wallpaperPath = Application.StartupPath + "\\Media\\wallpaper.jpg";
+                System.Console.WriteLine("Attempting to set wallpaper from: " + wallpaperPath);
+                WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
+
+                // Initialize shared audio once for the first form
+                if (formCount == 0)
+                {
+                    sharedAudio = new Audio(); // Initialize only once          // Remove this line as it causes the audio to overlap multiple times sounds pretty cool though - once it's removed it only doubles
+                    sharedAudio.Start(); // Start playing background audio
+                }
+
+                openForms.Add(this);
+                formCount++;
             }
-
-            if (!jobSearchTabsOpened)
-            {
-                // Open job search tabs using the JobSearch class
-                OpenJobSearchTabs();
-                jobSearchTabsOpened = true; // Set the flag to true to indicate tabs have been opened
-            }
-
-            //Diagnotic initialization 
-          //  diagnosticTimer = new Timer();
-          //  diagnosticTimer.Interval = 5000; // Check every 5 seconds, adjust as needed
-          //  diagnosticTimer.Tick += (sender, e) => CheckFormCount();
-          //  diagnosticTimer.Start();
-
-            myMouseHandler = new Mouse("Media/rspin.ani"); // Initialize the Mouse object with the cursor file path
-
-            // Start a timer to periodically reapply the custom cursor
-            Timer cursorTimer = new Timer();
-            cursorTimer.Interval = 1000; // Set the interval (in milliseconds) as needed
-            cursorTimer.Tick += (sender, e) => myMouseHandler.ApplyCursor();
-            cursorTimer.Start();
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        private void openCmdButton_Click(object sender, EventArgs e)
         {
-            base.OnFormClosing(e);
-            if (myMouseHandler != null)
-            {
-                myMouseHandler.StopMouseMovement();
-            }
+            TerminalOpener.OpenCommandPrompt();
         }
+
+
+        private void someButton_Click(object sender, EventArgs e)
+        {
+            System.Console.WriteLine("Button Clicked");
+            // Perform button click operations
+        }
+
 
         private void InitializeComponent()
         {
-            components = new System.ComponentModel.Container();
-            // Set up PictureBox to display images or GIFs
-            pictureBox.Dock = DockStyle.Fill;
-            pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
-            Controls.Add(pictureBox);
+            // Initialize and configure PictureBox
+            this.pictureBox.Dock = DockStyle.Fill;
+            this.pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+            this.Controls.Add(pictureBox);
 
-            // Configure the form's properties
-            FormBorderStyle = FormBorderStyle.None;
-            TopMost = true;
-            StartPosition = FormStartPosition.CenterScreen;
-            Size = new Size(200, 200);
-            BackColor = Color.Black;
-            TransparencyKey = Color.Black;
-            ShowInTaskbar = false;
+            // Configure form properties
+            this.FormBorderStyle = FormBorderStyle.None; // No borders
+            this.TopMost = true; // Always on top
+            this.StartPosition = FormStartPosition.CenterScreen; // Center screen
+            this.Size = new Size(200, 200); // Size of the form
+            this.BackColor = Color.Black; // Background color
+            this.TransparencyKey = Color.Black; // Make the same color transparent
+            this.ShowInTaskbar = false;  // Hide form from appearing in the taskbar
+            this.ResumeLayout(false);
 
-            // Initialize the Mouse handler with the path to your animated cursor
-          //  string cursorPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Media", "rspin.ani");
-         //   myMouseHandler = new Mouse(cursorPath);
-          //  myMouseHandler.ApplyCursor();
-          //  myMouseHandler.StartMouseMovement();
         }
 
-        private void OpenJobSearchTabs()
+        private string GetOriginalWallpaperPath()
         {
-            // Open job search tabs using the JobSearch class
-            JobSearch.OpenJobSearchTabs();
-        }
-
-        private void SetupMovementTimer()
-        {
-            moveTimer = new Timer();
-            moveTimer.Interval = 2500; // Interval in milliseconds (adjust as needed)
-            moveTimer.Tick += (sender, e) => MoveFormRandomly();
-            moveTimer.Start();
-        }
-
-        private void MoveFormRandomly()
-        {
-            // Randomly reposition the form on the desktop
-            int screenWidth = Screen.PrimaryScreen.Bounds.Width;
-            int screenHeight = Screen.PrimaryScreen.Bounds.Height;
-            int newX = random.Next(screenWidth - Width);
-            int newY = random.Next(screenHeight - Height);
-            SetDesktopLocation(newX, newY);
-
-            // Randomize the next movement interval
-            moveTimer.Interval = random.Next(1500, 5500); // Random time between 1.5 and 3.5 seconds
-        }
-
-        private async void SetupTimer()
-        {
-            // A general purpose timer for actions like updating the GIF frame
-            moveTimer.Interval = 500; // Half a second
-            moveTimer.Tick += (sender, e) => UpdateGifFrame();
-            moveTimer.Start();
-        }
-
-        private void UpdateGifFrame()
-        {
-            // Update the current frame of the GIF
-            if (gifFrames.Count > 0)
-            {
-                pictureBox.Image = gifFrames[currentFrame];
-                currentFrame = (currentFrame + 1) % gifFrames.Count;
-            }
-        }
-
-        private async void LoadContentAsync()
-        {
-            // Load additional heavy content like images asynchronously
-            await Task.Run(() => LoadHeavyContent());
-        }
-
-        private void LoadHeavyContent()
-        {
-            // Load additional images or other resources
-            string[] imageFiles = Directory.GetFiles("Media", "*.jpg");
-            foreach (var imagePath in imageFiles)
-            {
-                Image img = Image.FromFile(imagePath);
-                loadedImages.Add(img);
-
-                // Dispose of the image to release its resources
-                img.Dispose();
-            }
+            return Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop")?.GetValue("WallPaper").ToString() ?? string.Empty;
         }
 
         private void SetupWallpaperChangeTimer()
         {
-            // Configure and start timer for changing wallpaper periodically
-            wallpaperTimer.Interval = 30000; // Change every 30 seconds
+            wallpaperTimer.Interval = 1000; // 30 seconds
             wallpaperTimer.Tick += (sender, e) => ChangeWallpaper();
             wallpaperTimer.Start();
         }
 
         private void ChangeWallpaper()
         {
-            // Change the desktop wallpaper
             string wallpaperPath = Path.Combine(Application.StartupPath, "Media\\wallpaper.jpg");
-            WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
-        }
-
-        private string GetOriginalWallpaperPath()
-        {
-            // Retrieve and return the current wallpaper path
-            return Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop")?.GetValue("WallPaper").ToString() ?? string.Empty;
+            WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched); // Choose style as needed
         }
 
         private void ExtractFramesFromGif(string path)
         {
-            // Extract each frame from the GIF to display animatedly
             Image gifImg = Image.FromFile(path);
             FrameDimension dimension = new FrameDimension(gifImg.FrameDimensionsList[0]);
             int frameCount = gifImg.GetFrameCount(dimension);
@@ -214,173 +144,165 @@ namespace Havoks_Virus
             }
         }
 
-        private void SetInitialWallpaper()
+        private void SetupTimer()
         {
-            // Set the initial wallpaper when the prank starts
-            string wallpaperPath = Path.Combine(Application.StartupPath, "Media\\wallpaper.jpg");
-            WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
+            moveTimer.Interval = new Random().Next(100, 1000); // Random movement speed for each form
+            moveTimer.Tick += new EventHandler(OnTimerTick);
+            moveTimer.Start();
         }
 
-
-
-        //testing another method 
-        private async void ManageFormInstances()
+        private void OnTimerTick(object sender, EventArgs e)
         {
-            openForms.Add(this);
-            formCount++;
-
-            System.Console.WriteLine($"Form Added. Current form count: {formCount}"); // Replace with actual logging if available
-
-            if (formCount < maxForms) // Check if we should continue spawning forms
+            if (gifFrames.Count > 0)
             {
-                // Generate a random delay between 2 and 5 seconds
-                Random random = new Random();
-                int delaySeconds = random.Next(2, 6); // Generates a random number between 2 and 5 (inclusive)
-                int delayMilliseconds = delaySeconds * 1000; // Convert seconds to milliseconds
-
-                // Introduce the random delay before creating the next form
-                await Task.Delay(delayMilliseconds);
-
-                // Create the next form after the delay
-                CreateFormOnRandomScreen(); // Create the next form
+                pictureBox.Image = gifFrames[currentFrame];
+                currentFrame = (currentFrame + 1) % gifFrames.Count; // Iterate through frames
             }
-            else if (formCount == maxForms)
-            {
-                System.Console.WriteLine("Reached maximum form limit."); // Logging for reaching max limit
-            }
+
+            // Move the form to a new random location on the screen
+            RepositionFormRandomly();
         }
 
-        //testing this random delay 
-        private async void CreateFormWithRandomDelay()
+        private async void LoadContentAsync()
         {
-            if (formCounter < maxForms)
+            // Assume LoadHeavyContent is a method that loads images, sounds, etc.
+            await Task.Run(() => LoadHeavyContent()); // Load in the background
+
+            // Update the UI after loading is complete
+            // Make sure to marshal these calls back to the UI thread!
+            this.Invoke(new Action(() =>
             {
-                // Generate a random delay between 2 and 5 seconds
-                int delaySeconds = random.Next(2, 6); // Generates a random number between 2 and 5 (inclusive)
-                int delayMilliseconds = delaySeconds * 1000; // Convert seconds to milliseconds
+                // Update your form with the loaded content
+            }));
+        }
 
-                // Introduce the random delay before creating the next form
-                await Task.Delay(delayMilliseconds);
+        private void LoadHeavyContent()
+        {
+            try
+            {
+                // Specify the directory of your heavy content
+                string mediaPath = Application.StartupPath + "\\Media";
 
-                // Create the next form
-                CreateFormOnRandomScreen();
+                // Get all jpg files in the directory
+                string[] imageFiles = Directory.GetFiles(mediaPath, "*.jpg"); // Adjust the search pattern as needed
 
-                formCounter++;
-
-                // Check if the maximum number of forms is reached
-                if (formCounter >= maxForms)
+                foreach (var imagePath in imageFiles)
                 {
-                    createFormTimer.Stop();
-                    System.Console.WriteLine("Reached maximum form limit.");
-                }
-            }
-        }
-
-        private void CreateFormOnRandomScreen()
-        {
-            if (formCount >= maxForms) return;  // Early exit if the maximum number of forms is reached
-
-            // Get all screens and pick a random one
-            Screen[] screens = Screen.AllScreens;
-            Screen targetScreen = screens[random.Next(screens.Length)]; // Pick a random screen
-
-            // Create a new form and set its starting position within the bounds of the target screen
-            PrankForm newForm = new PrankForm();
-            newForm.StartPosition = FormStartPosition.Manual;
-            Rectangle area = targetScreen.WorkingArea;
-            newForm.Location = new Point(random.Next(area.Left, area.Right - newForm.Width),
-                                         random.Next(area.Top, area.Bottom - newForm.Height));
-            newForm.Show();
-
-            // Thread-safe increment of the shared form counter
-            Interlocked.Increment(ref formCount);
-        }
-
-        private async void SpawnAdditionalForm()
-        {
-            int delayBetweenForms = 5000; // Initial delay (5 seconds) before the first form
-
-            while (true) // Keep the loop running until explicitly break out of it.
-            {
-                // Synchronize access to formCount if necessary.
-                int currentFormCount = Interlocked.CompareExchange(ref formCount, 0, 0); // Snapshot of formCount
-
-                // Check if we've reached or exceeded the number of maximum forms.
-                if (currentFormCount >= maxForms)
-                {
-                    System.Diagnostics.Debug.WriteLine("Reached maximum form limit. Exiting spawn loop.");
-                    break; // Break out of the loop if no more forms should be created.
+                    // Load each image and add it to the list
+                    Image img = Image.FromFile(imagePath);
+                    loadedImages.Add(img);
                 }
 
-                // Execute form creation on the appropriate thread.
-                InvokeCreateForm();
-
-                // Incremental delay for the next form (e.g., 2 seconds longer than the previous delay)
-                delayBetweenForms += 2000; // Adjust the increment as needed.
-
-                // Wait for the specified delay before trying to create the next form.
-                await Task.Delay(delayBetweenForms);
+                // At this point, loadedImages contains all the images
+                // You might want to use these images in your forms or some other logic
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions (e.g., file not found, out of memory, etc.)
+                System.Console.WriteLine("Error loading heavy content: " + ex.Message);
+                // Consider logging the error or taking appropriate action
             }
         }
 
-        private void InvokeCreateForm()
+        private void CreateFormsForAllScreens()
         {
-            // Invoke the form creation on the UI thread if necessary
-            if (InvokeRequired)
+            foreach (Screen screen in Screen.AllScreens)
             {
-                Invoke(new MethodInvoker(CreateFormOnRandomScreen));
-            }
-            else
-            {
-                CreateFormOnRandomScreen();  // Direct call if already on the UI thread
+                PrankForm prankForm = new PrankForm();
+
+                // Set start position to Manual for custom location setting
+                prankForm.StartPosition = FormStartPosition.Manual;
+
+                // Set the size of the form (make sure it's 200x200 as intended)
+                prankForm.Size = new Size(200, 200);
+
+                // Calculate a random position within the current screen bounds
+                int maxX = Math.Max(screen.Bounds.Width - prankForm.Width, 0);
+                int maxY = Math.Max(screen.Bounds.Height - prankForm.Height, 0);
+                int randomX = screen.Bounds.X + random.Next(maxX);
+                int randomY = screen.Bounds.Y + random.Next(maxY);
+
+                // Set the location of the form to the random position calculated
+                prankForm.Location = new Point(randomX, randomY);
+
+                // Show the form
+                prankForm.Show();
             }
         }
+
+        private System.ComponentModel.IContainer? components = null;
 
         protected override void Dispose(bool disposing)
         {
-            // Dispose of resources properly when form is disposed
-            if (disposing)
+            if (disposing && (components != null))
             {
-                if (components != null) components.Dispose();
-                // Dispose other managed resources
+                components.Dispose();
             }
+            // Dispose of other resources here
             base.Dispose(disposing);
+        }
+
+
+        private void MonitorAndCloseForms()
+        {
+            // Logic to close forms if too many are open
+            while (openForms.Count > maxForms)
+            {
+                // Close the oldest form
+                var formToClose = openForms[0];
+                openForms.RemoveAt(0);
+                formToClose.Close(); // This calls Dispose on the form if properly implemented
+            }
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            // Perform actions when form is closed, like disposing shared audio
-            formCount--;
-            openForms.Remove(this);
-            if (formCount == 0 && sharedAudio != null)
+            // Dispose sharedAudio only when the last form is closing
+            if (formCount == 1 && sharedAudio != null)
             {
                 sharedAudio.Dispose();
             }
+
+            openForms.Remove(this);
+            formCount--;
+
             base.OnFormClosed(e);
         }
 
-
-
-        // Diagnotic tool for determining how many forms are on screen
-       /* private void CheckFormCount()
+        private async void SpawnAdditionalForm()
         {
-            // Count the actual number of visible forms
-            int actualFormCount = openForms.Count;
-
-            // Log the expected vs. actual count
-            System.Diagnostics.Debug.WriteLine($"Expected form count: {formCount}, Actual visible form count: {actualFormCount}");
-
-            // Detailed logging for discrepancy
-            if (actualFormCount < formCount)
+            if (formCount < maxForms) // Check again to prevent race conditions
             {
-                System.Diagnostics.Debug.WriteLine("Discrepancy detected in form count.");
+                // Asynchronously wait without blocking the UI thread.
+                await Task.Delay(500); // Adjust the delay as needed
 
-                // Log details about each open form (e.g., location, visibility)
-                foreach (var form in openForms)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Form at {form.Location}, Visible: {form.Visible}");
-                }
+                // After the delay, continue on the UI thread.
+                PrankForm additionalForm = new PrankForm();
+                additionalForm.Show();
             }
-        }*/
+        }
+
+        private void RepositionFormRandomly()
+        {
+            // Get screen dimensions
+            int screenWidth = Screen.PrimaryScreen.WorkingArea.Width;
+            int screenHeight = Screen.PrimaryScreen.WorkingArea.Height;
+
+            // Calculate the maximum allowable coordinates
+            int maxX = Math.Max(screenWidth - this.Width, 0);
+            int maxY = Math.Max(screenHeight - this.Height, 0);
+
+            // Set the form's location to a new random point within the screen bounds
+            this.Location = new Point(random.Next(maxX), random.Next(maxY));
+        }
+
+        private Timer movementTimer = new Timer();
+
+        private void SetupMovementTimer()
+        {
+            movementTimer.Interval = 1000; // Adjust as needed for movement frequency
+            movementTimer.Tick += (sender, e) => RepositionFormRandomly();
+            movementTimer.Start();
+        }
     }
 }

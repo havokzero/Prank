@@ -67,7 +67,7 @@ namespace Havoks_Virus
             "military recruitment"
         };
 
-        public static void OpenJobSearchTabs()
+        public static void OpenJobSearchTabs(string jobkeyword)
         {
             try
             {
