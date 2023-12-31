@@ -17,9 +17,6 @@
     <None Update="Media\blade.gif">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Media\blade.gif.bak">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="Media\getajob.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography.Xml;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Havoks_Virus
@@ -18,42 +18,32 @@ namespace Havoks_Virus
         [STAThread]
         static void Main()
         {
-            AllocConsole();  // Allocate a console for this app
+            AllocConsole(); // Allocate a console for this app for debugging
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             OpenJobSearchTabsOnce(); // Ensure this is placed correctly before running the form
-                                     // Create and show the first PrankForm as soon as the application starts.
+
+            // Load and apply the animated cursor
+            string cursorPath = "Media/rspin.ani"; // Adjust the path to your .ani file
+            IntPtr cursorHandle = LoadCursorFromFile(cursorPath);
+            if (!IntPtr.Zero.Equals(cursorHandle))
+            {
+                Application.UseWaitCursor = false; // Ensure the cursor is not a wait cursor
+                Cursor.Current = new Cursor(cursorHandle);
+                Application.ApplicationExit += (sender, args) => Cursor.Current.Dispose(); // Dispose of cursor on exit
+            }
+            else
+            {
+                MessageBox.Show("Failed to load cursor from file: " + cursorPath); // Fallback message
+            }
+
+            // Create and show the first PrankForm as soon as the application starts.
             PrankForm firstForm = new PrankForm();
             firstForm.Show();
 
             // Continue running the application with the first form
             Application.Run();
-
-            // Set the animated cursor globally
-            try
-            {
-                string cursorPath = "Media/rspin.ani"; // Adjust the path to your .ani file
-                IntPtr cursorHandle = LoadCursorFromFile(cursorPath);
-                if (!IntPtr.Zero.Equals(cursorHandle))
-                {
-                    Cursor animatedCursor = new Cursor(cursorHandle);
-                    Cursor.Current = animatedCursor;
-                }
-                else
-                {
-                    throw new ApplicationException("Could not create cursor from file " + cursorPath);
-                }
-            }
-            catch (Exception err)
-            {
-                // Use Console.WriteLine to write error messages to the console
-                System.Console.WriteLine(err.Message);
-                MessageBox.Show(err.Message);  // Or use MessageBox to show the error in a window
-            }
-
-            // Running the PrankForm
-            Application.Run(new PrankForm());
         }
 
         public static void OpenJobSearchTabsOnce()
