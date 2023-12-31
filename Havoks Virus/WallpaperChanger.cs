@@ -54,7 +54,17 @@ namespace Havoks_Virus
                 }
 
                 // Set the wallpaper using the system parameters info function
-                SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, imagePath, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
+                int result = SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, imagePath, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
+
+                if (result == 0) // If setting the wallpaper failed
+                {
+                    int error = Marshal.GetLastWin32Error();
+                    Debug.WriteLine("Failed to set wallpaper. Error: " + error);
+                }
+                else
+                {
+                    Debug.WriteLine("Wallpaper set successfully.");
+                }
             }
         }
     }

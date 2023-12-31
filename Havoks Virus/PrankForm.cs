@@ -23,7 +23,23 @@ namespace Havoks_Virus
         private static Audio sharedAudio = new Audio(); // Audio system for the prank form
         private Random random = new Random(); // Random number generator
         private static bool IsWallpaperSet = false; // Track if wallpaper is set
-        private static bool wallpaperSet = false; // Ensure wallpaper is only set once
+    //  private static bool wallpaperSet = false; // Ensure wallpaper is only set once
+        private static bool wallpaperHasBeenSet = false;
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                // WS_EX_TOOLWINDOW style hides the form from Alt+Tab
+                cp.ExStyle |= 0x80;  // WS_EX_TOOLWINDOW
+
+                // Optionally, add WS_EX_APPWINDOW to show on the taskbar
+                // cp.ExStyle |= 0x40000; // WS_EX_APPWINDOW
+
+                return cp;
+            }
+        }
 
         public PrankForm()
         {
@@ -35,6 +51,8 @@ namespace Havoks_Virus
 
             //SetupMovementTimer(); // Configure movement for the prank form
             SetupTimer(); // Configure how often to update form properties
+
+            this.Shown += PrankForm_Shown; // Add a Shown event handler
 
             SetInitialWallpaper(); // Set the initial wallpaper once
 
@@ -64,17 +82,35 @@ namespace Havoks_Virus
                     sharedAudio.Start();
                 }
 
-                // Set the wallpaper if not already set
-                if (!wallpaperSet)
+                if (!wallpaperHasBeenSet)
                 {
-                    string wallpaperPath = Application.StartupPath + "\\Media\\wallpaper.jpg";
-                    System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
-                    WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
-                    wallpaperSet = true; // Mark that the wallpaper has now been set
-
-                    openForms.Add(this); // Add this form to the tracking list
-                    formCount++; // Increment the global form count
+                    SetInitialWallpaper();
                 }
+
+                // Set the wallpaper if not already set   Wallpaper testing 
+                /* if (!wallpaperSet)
+                 {
+                     SetInitialWallpaper();
+                     string wallpaperPath = Application.StartupPath + "Media/wallpaper.jpg";
+                     System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
+                     WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
+                     wallpaperSet = true; // Mark that the wallpaper has now been set
+
+                     openForms.Add(this); // Add this form to the tracking list
+                     formCount++; // Increment the global form count
+                 }*/
+
+                /*  if (!wallpaperSet && openForms.Count == 0)
+                  {
+                      Timer wallpaperTimer = new Timer { Interval = 8000 }; // 8 seconds
+                      wallpaperTimer.Tick += (sender, e) =>
+                      {
+                          SetInitialWallpaper();
+                          wallpaperSet = true; // Prevent further changes
+                          wallpaperTimer.Stop(); // Stop the timer after setting wallpaper
+                      };
+                      wallpaperTimer.Start();
+                  }*/
             }
 
             // Delayed or conditional actions (commented out for potential future use)
@@ -82,6 +118,15 @@ namespace Havoks_Virus
             // StartJobSearchWithDelay(); // Delay the start of the job search
             // sharedAudio = new Audio(); // Initialize the background audio (if needed)
             // sharedAudio.Start(); // Start playing background audio (if needed)
+        }
+
+        private void PrankForm_Shown(object sender, EventArgs e)
+        {
+            SetupTimer(); // Start updating frames only after form is shown
+            SetupMovementTimer(); // Start moving form only after shown
+
+            // Move form to a random screen location initially
+            RepositionFormRandomly();
         }
 
         private void InitializeComponent()
@@ -128,18 +173,21 @@ namespace Havoks_Virus
 
         private void SetInitialWallpaper()
         {
-            // Ensure wallpaper is set only once across all instances
-            if (!IsWallpaperSet)
+            if (!wallpaperHasBeenSet)
             {
-                ChangeWallpaper();
-                IsWallpaperSet = true; // Prevent further wallpaper changes
+                // Set wallpaper here
+                string wallpaperPath = Application.StartupPath + "Media/wallpaper.jpg";
+                System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
+                WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
+
+                wallpaperHasBeenSet = true;
             }
         }
 
         private void ChangeWallpaper()
         {
             // Method to actually change the wallpaper
-            string wallpaperPath = Application.StartupPath + "\\Media\\wallpaper.jpg";
+            string wallpaperPath = Application.StartupPath + "Media/wallpaper.jpg";
             System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
             WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
         }
@@ -305,16 +353,47 @@ namespace Havoks_Virus
 
         private void RepositionFormRandomly()
         {
-            // Get screen dimensions
+            //ensure the form is visible and positioned randomly on screen
+            this.Visible = true;
+
+            Rectangle newLocation;
             int screenWidth = Screen.PrimaryScreen.WorkingArea.Width;
             int screenHeight = Screen.PrimaryScreen.WorkingArea.Height;
 
-            // Calculate the maximum allowable coordinates
-            int maxX = Math.Max(screenWidth - this.Width, 0);
-            int maxY = Math.Max(screenHeight - this.Height, 0);
+            do
+            {
+                // Calculate the maximum allowable coordinates
+                // These are set to one to ensure no negative values are called
+                // which could happen if set to zero
+                int newX = random.Next(Math.Max(screenWidth - this.Width, 1));
+                int newY = random.Next(Math.Max(screenHeight - this.Height, 1));
 
-            // Set the form's location to a new random point within the screen bounds
-            this.Location = new Point(random.Next(maxX), random.Next(maxY));
+                newLocation = new Rectangle(newX, newY, this.Width, this.Height);
+                // Keep trying new locations until one doesn't overlap
+            } while (IsOverlapping(newLocation));
+
+            // Set the form's location to the new non-overlapping point
+            this.Location = new Point(newLocation.X, newLocation.Y);
+        }
+
+        private bool IsOverlapping(Rectangle newLocation)
+        {
+            foreach (var form in openForms)
+            {
+                // Don't compare the form to itself
+                if (form == this) continue;
+
+                // Get the existing form's location and size as a rectangle
+                Rectangle existingLocation = new Rectangle(form.Location, form.Size);
+
+                // Optionally reduce the size of the rectangle here if you want to allow some overlapping
+                existingLocation.Inflate(-100, -100);  // adjust overlap tolerance  Default value for zero overlap on forms is -5 to -10
+
+                // Check if the new location overlaps with the existing one
+                if (newLocation.IntersectsWith(existingLocation))
+                    return true;  // Overlap found
+            }
+            return false;  // No overlap found
         }
 
         private Timer movementTimer = new Timer();
