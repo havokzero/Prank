@@ -67,7 +67,7 @@ namespace Havoks_Virus
             "military recruitment"
         };
 
-        public static void OpenJobSearchTabs(string jobkeyword)
+        public static void OpenJobSearchTabs()   //(string jobkeyword)
         {
             try
             {
@@ -126,6 +126,13 @@ namespace Havoks_Virus
                 array[k] = array[n];
                 array[n] = value;
             }
+        }
+
+        // Method to get a random job title from the menialJobs array
+        public static string GetRandomJobTitle()
+        {
+            Random rng = new Random();
+            return menialJobs[rng.Next(menialJobs.Length)];
         }
     }
 }

