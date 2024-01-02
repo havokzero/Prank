@@ -6,45 +6,91 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
+using IWshRuntimeLibrary;
 
 namespace Havoks_Virus
 {
     public class DtIcon
     {
+        private string mediaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Media");
         private string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        private string[] prankNames = new string[] { "Havok Virus", "Delfos.A", "Delfos.B", /*... other names ...*/ };
-        private string iconPath = @"Media\spin.ico"; // Adjust with the correct path to your icon file
+        private string iconFileName = "spin.ico"; // Assuming the icon is named spin.ico and located in the project's Media directory
+
+        // DLL Imports
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll", EntryPoint = "SendMessageA", SetLastError = true)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        private const int WM_COMMAND = 0x111;
+        private const int MIN_ALL = 419; // Command to hide icons
+        private const int MIN_ALL_UNDO = 416; // Command to show icons
+
+        // Generate a unique random name for prank icon
+        private string GenerateRandomName()
+        {
+            Random rnd = new Random();
+            string[] prefixes = { "Havok", "Delfos", "Chaos", "Pandora", "Anarchy", "Pepe", "Cat", "Jad", "Kelsie", "LuLu", "Jariff", "Stetson", "Skeeter", "getajob", "Get_a_Job", "NSA", "Harley", "dirty" }; // Prefixes for the names
+            string[] suffixes = { ".A", ".B", ".C", ".D", ".E", "Virus", "Bug", "Trojan", ".wm", "worm", ".exe", ".elf", ".FBI", ".CIA", ".NSA", ".PA", ".CA", ".NYC", "Virus", "Virii" }; // Suffixes for the names
+
+            string prefix = prefixes[rnd.Next(prefixes.Length)];
+            string suffix = suffixes[rnd.Next(suffixes.Length)];
+            return prefix + suffix;
+        }
 
         public void CreatePrankIcons()
         {
-            foreach (var name in prankNames)
+            string iconPath = Path.Combine(mediaPath, iconFileName);
+            if (!System.IO.File.Exists(iconPath)) // Specify System.IO to resolve ambiguity
             {
-                string filePath = Path.Combine(desktopPath, name + ".lnk"); // .lnk for shortcut files
-                using (StreamWriter writer = new StreamWriter(filePath))
-                {
-                    writer.WriteLine("URL=HavokPrank"); // Dummy content, adjust as needed for the prank
-                    // Note: Properly creating a .lnk file usually requires interacting with Windows Shell,
-                    // which is beyond the scope of this simple text-writing example.
-                }
+                throw new FileNotFoundException("Icon file not found.", iconPath);
+            }
 
-                // Optionally, set the icon for the shortcut if you know how to manipulate .lnk files or use a library for it.
+            WshShell shell = new WshShell();
+
+            for (int i = 0; i < 10; i++)
+            {
+                string prankName = GenerateRandomName();
+                string linkPath = Path.Combine(desktopPath, prankName + ".lnk");
+                IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(linkPath);
+                // Set properties for the shortcut
+                shortcut.Description = "Hacked by Havok";
+                shortcut.IconLocation = iconPath;
+                shortcut.TargetPath = iconPath; // You might want this to point to a real or dummy executable
+                shortcut.Save();
             }
         }
 
-        public void Cleanup()
+        public void RestoreDesktop()
         {
-            // Remove all prank icons from the desktop
-            foreach (var name in prankNames)
+            var prankFiles = Directory.GetFiles(desktopPath, "*.lnk");
+            foreach (var prankFile in prankFiles)
             {
-                string filePath = Path.Combine(desktopPath, name + ".lnk");
-                if (File.Exists(filePath))
+                if (prankFile.Contains("PrankIcon"))
                 {
-                    File.Delete(filePath);
+                    System.IO.File.Delete(prankFile);
                 }
             }
+        }
 
-            // Restore any original settings or cleanup additional resources if needed
+        public void HideDesktopIcons()
+        {
+            IntPtr hWnd = FindWindow("Progman", null);
+            if (hWnd != IntPtr.Zero)
+            {
+                SendMessage(hWnd, WM_COMMAND, (IntPtr)MIN_ALL, IntPtr.Zero);
+            }
+        }
+
+        public void ShowDesktopIcons()
+        {
+            IntPtr hWnd = FindWindow("Progman", null);
+            if (hWnd != IntPtr.Zero)
+            {
+                SendMessage(hWnd, WM_COMMAND, (IntPtr)MIN_ALL_UNDO, IntPtr.Zero);
+            }
         }
     }
 }
-
