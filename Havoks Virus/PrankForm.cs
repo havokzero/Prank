@@ -26,7 +26,7 @@ namespace Havoks_Virus
         private string originalWallpaperPath; // To store the path of the original wallpaper
        // private static Audio sharedAudio = new Audio(); // Audio system for the prank form            // Audio is not initialized in this class as it created a crazy loop, it will generate in Program.cs
         private Random random = new Random(); // Random number generator
-        //private Mouse prankMouse; // Declare the Mouse member
+        private Mouse prankMouse; // Declare the Mouse member
         private static bool wallpaperHasBeenSet = false; // Ensure wallpaper is only set once
         private DtIcon prankIconManager;
         //private Mouse prankMouse; // Declare the Mouse member
@@ -67,16 +67,16 @@ namespace Havoks_Virus
             formCount++; // Increment the global form count.
             openForms.Add(this); // Add this form instance to the list of open forms.
 
-            // prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
-            //  prankMouse.StartMouseMovement();
+            prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
+            prankMouse.StartMouseMovement();
             prankIconManager = new DtIcon();
         }
 
         private void InitializeMouse()
         {
             // Initialize and set the mouse cursor and start jitter effect
-          //  prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
-          //  prankMouse.StartMouseMovement();
+            prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
+            prankMouse.StartMouseMovement();
         }
 
         protected override CreateParams CreateParams
@@ -141,28 +141,7 @@ namespace Havoks_Virus
                 MessageBox.Show("Failed to load GIF: " + ex.Message); // Show error message if loading fails
             }
         }
-
-        /*private void LoadAndDisplayGif(string gifPath)
-        {
-            // Load the GIF image from the specified path
-            Image gifImg = Image.FromFile(gifPath);
-            // Extract frames and assign the first frame to the PictureBox
-            FrameDimension dimension = new FrameDimension(gifImg.FrameDimensionsList[0]);
-            int frameCount = gifImg.GetFrameCount(dimension);
-            for (int i = 0; i < frameCount; i++)
-            {
-                gifImg.SelectActiveFrame(dimension, i);
-                gifFrames.Add((Image)gifImg.Clone());
-            }
-
-            if (gifFrames.Count > 0)
-            {
-                pictureBox.Image = gifFrames[0]; // Display the first frame
-            }
-
-            SetupTimer(); // Setup timer for GIF frame update
-        }*/
-
+        
         private string GetOriginalWallpaperPath()
         {
             return Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop")?.GetValue("WallPaper").ToString() ?? string.Empty;
@@ -291,8 +270,8 @@ namespace Havoks_Virus
         {
             base.OnFormClosing(e);
 
-            // Dispose of the Mouse instance
-        //    prankMouse?.Dispose();
+            //Dispose of the Mouse instance
+            prankMouse?.Dispose();
 
             // Dispose managed resources
             components?.Dispose();
@@ -320,7 +299,7 @@ namespace Havoks_Virus
          //   if (formCount == 1 && sharedAudio != null)
             {               
                 //sharedAudio.Dispose();
-               // prankMouse?.Dispose(); // Dispose of the Mouse instance when form is closed
+               prankMouse?.Dispose(); // Dispose of the Mouse instance when form is closed
             }
 
             openForms.Remove(this);
@@ -332,7 +311,7 @@ namespace Havoks_Virus
             prankIconManager.ShowDesktopIcons(); // Show desktop icons again
             // Dispose of other resources and perform clean-up
             // Dispose of the Mouse instance
-            // prankMouse?.Dispose();
+            prankMouse?.Dispose();
 
             // Dispose managed resources
             components?.Dispose();
