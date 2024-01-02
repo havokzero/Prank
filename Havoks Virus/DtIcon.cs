@@ -32,8 +32,8 @@ namespace Havoks_Virus
         private string GenerateRandomName()
         {
             Random rnd = new Random();
-            string[] prefixes = { "Havok", "Delfos", "Chaos", "Pandora", "Anarchy", "Pepe", "Cat", "Jad", "Kelsie", "LuLu", "Jariff", "Stetson", "Skeeter", "getajob", "Get_a_Job", "NSA", "Harley", "dirty" }; // Prefixes for the names
-            string[] suffixes = { ".A", ".B", ".C", ".D", ".E", "Virus", "Bug", "Trojan", ".wm", "worm", ".exe", ".elf", ".FBI", ".CIA", ".NSA", ".PA", ".CA", ".NYC", "Virus", "Virii" }; // Suffixes for the names
+            string[] prefixes = { "Havok", "Delfos", "Chaos", "Pandora", "Anarchy", "Pepe", "Cat", "Jad", "Kelsie", "LuLu", "Jariff", "Stetson", "Skeeter", "getajob", "Get_a_Job", "NSA", "Harley", "dirty", "jimmy" }; // Prefixes for the names
+            string[] suffixes = { ".A", ".B", ".C", ".D", ".E", "Virus", "Bug", "Trojan", ".wm", "worm", ".exe", ".elf", ".FBI", ".CIA", ".NSA", ".PA", ".CA", ".NYC", "Virus", "Virii", ".pdf", ".spy", ".sql", ".job" }; // Suffixes for the names
 
             string prefix = prefixes[rnd.Next(prefixes.Length)];
             string suffix = suffixes[rnd.Next(suffixes.Length)];
