@@ -120,6 +120,13 @@ namespace Havoks_Virus
             // Create prank icons on desktop
             prankIcons.CreatePrankIcons();
 
+            // Run the application with the main form or any specific form you have
+            Application.Run(new MainForm()); // Replace MainForm with your actual main form's name
+
+            // On application exit, restore the desktop to its original state
+            prankIcons.RestoreDesktop();
+            prankIcons.ShowDesktopIcons();
+
 
         }
 

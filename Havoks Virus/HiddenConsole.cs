@@ -119,7 +119,7 @@ namespace Havoks_Virus
             {
                 // Show custom warning message if the user tries to close the form
                 MessageBox.Show("You do not want to do that Pepe.", "Warning!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                MessageBox.Show("Are you Sure!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Havok is your God!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 e.Cancel = true; // Prevent the form from closing
             }
         }
