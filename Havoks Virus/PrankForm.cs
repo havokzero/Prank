@@ -1,122 +1,142 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
 using Timer = System.Windows.Forms.Timer;
 
+
 namespace Havoks_Virus
 {
     public class PrankForm : Form
     {
+        // Member declarations
         private PictureBox pictureBox = new PictureBox();
         private List<Image> gifFrames = new List<Image>(); // Stores each frame of the GIF
         private int currentFrame = 0; // Tracks the current frame of the GIF
         private Timer moveTimer = new Timer(); // Timer for controlling movement speed
         private static int formCount = 0; // Keep track of the number of forms
-        private const int maxForms = 12;  // Maximum number of forms allowed ..... Count starts from zero
+        private const int maxForms = 12; // Maximum number of forms allowed
         private List<Image> loadedImages = new List<Image>(); // To store loaded images
         private static List<PrankForm> openForms = new List<PrankForm>(); // Track all open forms
         private Timer wallpaperTimer = new Timer(); // Timer for changing the wallpaper
         private string originalWallpaperPath; // To store the path of the original wallpaper
-        private static Audio sharedAudio = new Audio(); // Audio system for the prank form
+       // private static Audio sharedAudio = new Audio(); // Audio system for the prank form            // Audio is not initialized in this class as it created a crazy loop, it will generate in Program.cs
         private Random random = new Random(); // Random number generator
-        private static bool IsWallpaperSet = false; // Track if wallpaper is set
-      //private static bool wallpaperSet = false; // Ensure wallpaper is only set once
-        private static bool wallpaperHasBeenSet = false;
-        private Mouse prankMouse; // Add this line to declare the Mouse member
+        //private Mouse prankMouse; // Declare the Mouse member
+        private static bool wallpaperHasBeenSet = false; // Ensure wallpaper is only set once
+        //private Mouse prankMouse; // Declare the Mouse member
+
+
+        // Constructor
+        public PrankForm()
+        {
+            InitializeComponent(); // Initializes components from the designer file.
+            InitializePrankForm(); // Further configuration for prank behavior.
+            //InitializeMouse();
+        }
+
+        // InitializePrankForm handles all the setup and configuration
+        private void InitializePrankForm()
+        {
+            ConfigureFormProperties(); // Set the form's visual and behavioral properties.
+            ConfigurePictureBox();    // Set up the PictureBox to display the GIF.
+            LoadAndDisplayGif("Media/blade.gif"); // Load and display the initial GIF.
+
+            // Initialize and start background audio if the file paths are correctly set.
+          //  sharedAudio = new Audio(); // Ensure the Audio class handles file not found or other errors gracefully.
+          //  sharedAudio.Start();       // Start audio playback.
+
+            SetupTimer(); // Configure a timer for tasks such as moving the form or changing GIF frames.
+            this.Shown += PrankForm_Shown; // Attach event handler for when the form is first shown.
+
+            originalWallpaperPath = GetOriginalWallpaperPath(); // Save original wallpaper path for restoration later.
+            SetInitialWallpaper(); // Change the wallpaper to the prank wallpaper.
+
+            ManageFormSpawning(); // Handle the creation of additional forms if needed.
+
+            System.Diagnostics.Debug.WriteLine($"Form {formCount} created."); // Use Debug.WriteLine for debugging to avoid console outputs in release.
+
+            formCount++; // Increment the global form count.
+            openForms.Add(this); // Add this form instance to the list of open forms.
+
+           // prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
+          //  prankMouse.StartMouseMovement();
+        }
+
+        private void InitializeMouse()
+        {
+            // Initialize and set the mouse cursor and start jitter effect
+          //  prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
+          //  prankMouse.StartMouseMovement();
+        }
 
         protected override CreateParams CreateParams
         {
             get
             {
                 CreateParams cp = base.CreateParams;
-                // WS_EX_TOOLWINDOW style hides the form from Alt+Tab
-                cp.ExStyle |= 0x80;  // WS_EX_TOOLWINDOW
-
-                // Optionally, add WS_EX_APPWINDOW to show on the taskbar
-                // cp.ExStyle |= 0x40000; // WS_EX_APPWINDOW
-
+                cp.ExStyle |= 0x80;  // WS_EX_TOOLWINDOW style hides the form from Alt+Tab
                 return cp;
             }
-        }
-
-        public PrankForm()
-        {
-            InitializeComponent();
-            this.DoubleBuffered = true; // Reduce flickering effect
-
-            this.Size = new Size(200, 200); // Set the size of the prank form
-            LoadAndDisplayGif("Media/blade.gif"); // Synchronously load and display GIF
-            //SetupMovementTimer(); // Configure movement for the prank form
-            SetupTimer(); // Configure how often to update form properties
-            this.Shown += PrankForm_Shown; // Add a Shown event handler
-            SetInitialWallpaper(); // Set the initial wallpaper once
-            originalWallpaperPath = GetOriginalWallpaperPath(); // Keep original wallpaper path for later restoration
-            ExtractFramesFromGif("Media/blade.gif"); // Extract frames for any gif animations
-            LoadContentAsync(); // Load heavy content asynchronously to keep UI responsive
-            System.Console.WriteLine($"Form {formCount} created."); // Count the forms being spawned for testing
-            prankMouse = new Mouse("Media/rspin.ani");
-            
-
-            openForms.Add(this); // Add this form to the tracking list
-            formCount++; // Increment the global form count
-
-            if (formCount <= maxForms)
-            {
-                if (openForms.Count == 1)
-                {
-                    CreateFormsForAllScreens(); // Create forms for all screens
-                }
-
-                Timer spawnTimer = new Timer { Interval = 8000 }; // Timer to spawn additional forms
-                spawnTimer.Tick += (sender, e) => SpawnAdditionalForm();
-                spawnTimer.Start();
-
-                if (formCount == 1) // Only initialize once
-                {
-                    sharedAudio = new Audio();
-                    sharedAudio.Start();
-                }
-
-                if (!wallpaperHasBeenSet)
-                {
-                    SetInitialWallpaper();
-                }                
-            }
-
-            // Delayed or conditional actions (commented out for potential future use)
-            // Task.Delay(7000).ContinueWith(t => StartJobSearch()); // Adjust delay as needed
-            // StartJobSearchWithDelay(); // Delay the start of the job search
-            // sharedAudio = new Audio(); // Initialize the background audio (if needed)
-            // sharedAudio.Start(); // Start playing background audio (if needed)
         }
 
         private void PrankForm_Shown(object sender, EventArgs e)
         {
             SetupTimer(); // Start updating frames only after form is shown
-            SetupMovementTimer(); // Start moving form only after shown
-
-            // Move form to a random screen location initially
+            SetupMovementTimer();
             RepositionFormRandomly();
         }
 
         private void InitializeComponent()
         {
-            this.pictureBox.Dock = DockStyle.Fill;
-            this.pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
-            this.Controls.Add(pictureBox);
-            this.FormBorderStyle = FormBorderStyle.None;
-            this.TopMost = true;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Size = new Size(200, 200);
+            ComponentResourceManager resources = new ComponentResourceManager(typeof(PrankForm));
+            SuspendLayout();
+            // 
+            // PrankForm
+            // 
+            ClientSize = new Size(284, 261);
+            Icon = (Icon)resources.GetObject("$spin.ico");
+            Name = "PrankForm";
+            ResumeLayout(false);
+        }
+
+        private void ConfigureFormProperties()
+        {
+           // this.Text = "Test Form"; // Set a title to see in the taskbar
+            this.DoubleBuffered = true; // Reduce flickering effect
+            this.Size = new Size(200, 200); // Set the size of the prank form
             this.BackColor = Color.Black;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.TopMost = true;
             this.TransparencyKey = Color.Black;
             this.ShowInTaskbar = false;
         }
 
+        private void ConfigurePictureBox()
+        {
+            pictureBox.Dock = DockStyle.Fill; // Make PictureBox fill the entire form
+            pictureBox.SizeMode = PictureBoxSizeMode.Zoom; // Set the PictureBox to zoom image
+            this.Controls.Add(pictureBox); // Add PictureBox to form's controls
+        }
+
         private void LoadAndDisplayGif(string gifPath)
+        {
+            try
+            {
+                Image gifImg = Image.FromFile(gifPath); // Load the GIF image from the specified path
+                pictureBox.Image = gifImg; // Set the PictureBox's Image to the loaded GIF
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to load GIF: " + ex.Message); // Show error message if loading fails
+            }
+        }
+
+        /*private void LoadAndDisplayGif(string gifPath)
         {
             // Load the GIF image from the specified path
             Image gifImg = Image.FromFile(gifPath);
@@ -135,7 +155,7 @@ namespace Havoks_Virus
             }
 
             SetupTimer(); // Setup timer for GIF frame update
-        }
+        }*/
 
         private string GetOriginalWallpaperPath()
         {
@@ -148,7 +168,7 @@ namespace Havoks_Virus
             {
                 // Set wallpaper here
                 string wallpaperPath = Application.StartupPath + "Media/wallpaper.jpg";
-                System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
+                //System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");     // this is used for debugging
                 WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
 
                 wallpaperHasBeenSet = true;
@@ -159,7 +179,7 @@ namespace Havoks_Virus
         {
             // Method to actually change the wallpaper
             string wallpaperPath = Application.StartupPath + "Media/wallpaper.jpg";
-            System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");
+           // System.Console.WriteLine($"Setting wallpaper from: {wallpaperPath}");     // this is used for debugging
             WallpaperChanger.SetWallpaper(wallpaperPath, WallpaperChanger.Style.Stretched);
         }
 
@@ -232,7 +252,7 @@ namespace Havoks_Virus
             catch (Exception ex)
             {
                 // Handle exceptions (e.g., file not found, out of memory, etc.)
-                System.Console.WriteLine("Error loading heavy content: " + ex.Message);
+              //  System.Console.WriteLine("Error loading heavy content: " + ex.Message);       this will not be passed in final product
                 // Consider logging the error or taking appropriate action
             }
         }
@@ -266,7 +286,7 @@ namespace Havoks_Virus
             base.OnFormClosing(e);
 
             // Dispose of the Mouse instance
-            prankMouse?.Dispose();
+        //    prankMouse?.Dispose();
 
             // Dispose managed resources
             components?.Dispose();
@@ -291,9 +311,10 @@ namespace Havoks_Virus
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             // Dispose sharedAudio only when the last form is closing
-            if (formCount == 1 && sharedAudio != null)
+         //   if (formCount == 1 && sharedAudio != null)
             {
-                sharedAudio.Dispose();
+                //sharedAudio.Dispose();
+               // prankMouse?.Dispose(); // Dispose of the Mouse instance when form is closed
             }
 
             openForms.Remove(this);
@@ -360,11 +381,23 @@ namespace Havoks_Virus
         private void SetupMovementTimer()
         {
             Random rng = new Random();
-            int minInterval = 1000; // Minimum interval in milliseconds (2.5 seconds)
+            int minInterval = 1000; // Minimum interval in milliseconds (1 second)
             int maxInterval = 8000; // Maximum interval in milliseconds (8 seconds)
             movementTimer.Interval = rng.Next(minInterval, maxInterval); // Set a random interval between the min and max
             movementTimer.Tick += (sender, e) => RepositionFormRandomly();
             movementTimer.Start();
+        }
+
+        private void ManageFormSpawning()
+        {
+            if (formCount < maxForms)
+            {
+             //   sharedAudio.Start();
+
+                Timer spawnTimer = new Timer { Interval = 2000 };
+                spawnTimer.Tick += (sender, e) => SpawnAdditionalForm();
+                spawnTimer.Start();
+            }
         }
     }
 }

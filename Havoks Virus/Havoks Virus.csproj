@@ -26,6 +26,9 @@
     <None Update="Media\rspin.ani">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Media\spin.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Media\wallpaper.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

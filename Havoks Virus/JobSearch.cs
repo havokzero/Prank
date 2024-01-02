@@ -104,12 +104,12 @@ namespace Havoks_Virus
                     });
                 }
 
-                System.Console.WriteLine("Opened job search tabs in your default browser.");
+                //System.Console.WriteLine("Opened job search tabs in your default browser.");      //used for debugging
             }
             catch (Exception ex)
             {
                 // Log any errors encountered when opening the job search tabs
-                System.Console.WriteLine("An error occurred while opening tabs: " + ex.Message);
+                //System.Console.WriteLine("An error occurred while opening tabs: " + ex.Message);      //used for debugging 
             }
         }
 

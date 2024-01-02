@@ -35,7 +35,7 @@ namespace Havoks_Virus
             }
             catch (Exception ex)
             {
-                System.Console.WriteLine($"Error applying cursor: {ex.Message}");
+              //  System.Console.WriteLine($"Error applying cursor: {ex.Message}");     //used for debugging
             }
         }
 
