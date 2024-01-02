@@ -112,21 +112,21 @@ namespace Havoks_Virus
             prankMouse.StartMouseMovement();
 
             // Instantiate the DtIcon class
+            // Initialize the DtIcon class
+            // Hide desktop icons
             DtIcon prankIcons = new DtIcon();
-
-            // Hide desktop icons (if this is part of the prank initialization)
             prankIcons.HideDesktopIcons();
 
-            // Create prank icons on desktop
+            // Create prank icons
             prankIcons.CreatePrankIcons();
 
-            // Run the application with the main form or any specific form you have
-            Application.Run(new MainForm()); // Replace MainForm with your actual main form's name
+            Application.Run(new PrankForm());
 
             // On application exit, restore the desktop to its original state
-            prankIcons.RestoreDesktop();
-            prankIcons.ShowDesktopIcons();
-
+            // On application end or prank over
+            prankIcons.RestoreDesktop();  // Remove prank icons
+            prankIcons.ShowDesktopIcons();  // Show desktop icons
+           
 
         }
 

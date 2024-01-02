@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace Havoks_Virus
 {
@@ -27,6 +28,8 @@ namespace Havoks_Virus
             this.Size = new Size(800, 500); // Set a size for the window
             this.BackColor = Color.Black; // Black background for console feel
             this.Visible = true; // Ensure it's visible
+            this.TopMost = true;
+                       
 
             // Initialize and configure the console output textbox (to mimic console output area)
             consoleOutput = new TextBox
@@ -120,6 +123,7 @@ namespace Havoks_Virus
                 // Show custom warning message if the user tries to close the form
                 MessageBox.Show("You do not want to do that Pepe.", "Warning!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 MessageBox.Show("Havok is your God!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Fuck you Pepe....\n Get a Job! \n You fucking fuck\n or learn to program!", "Critical Error", MessageBoxButtons.AbortRetryIgnore, MessageBoxIcon.Stop);
                 e.Cancel = true; // Prevent the form from closing
             }
         }

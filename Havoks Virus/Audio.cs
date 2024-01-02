@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using NAudio.Wave;
 
@@ -13,7 +14,7 @@ public class Audio : IDisposable
     public Audio()
     {
         // Initialize the array of audio file paths
-        audioFilePaths = new string[] { @"Media\getajob.wav", @"Media\psyops.wav" };
+        audioFilePaths = new string[] { @"Media\getajob.wav", @"Media\psyops.wav", @"Media\jimmy.wav" };
         currentAudioIndex = 0; // Start with the first file
 
         // Initialize the wave output device

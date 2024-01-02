@@ -32,6 +32,9 @@
     <None Update="Media\getajob.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Media\jimmy.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Media\psyops.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

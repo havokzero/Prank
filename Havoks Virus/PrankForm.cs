@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Resources;
 using System.Windows.Forms;
 using Timer = System.Windows.Forms.Timer;
 
@@ -27,6 +28,7 @@ namespace Havoks_Virus
         private Random random = new Random(); // Random number generator
         //private Mouse prankMouse; // Declare the Mouse member
         private static bool wallpaperHasBeenSet = false; // Ensure wallpaper is only set once
+        private DtIcon prankIconManager;
         //private Mouse prankMouse; // Declare the Mouse member
 
 
@@ -35,6 +37,9 @@ namespace Havoks_Virus
         {
             InitializeComponent(); // Initializes components from the designer file.
             InitializePrankForm(); // Further configuration for prank behavior.
+            prankIconManager = new DtIcon(); // Instantiate DtIcon class
+            prankIconManager.HideDesktopIcons(); // Hide all desktop icons
+            prankIconManager.CreatePrankIcons(); // Create prank icons on the desktop
             //InitializeMouse();
         }
 
@@ -62,8 +67,9 @@ namespace Havoks_Virus
             formCount++; // Increment the global form count.
             openForms.Add(this); // Add this form instance to the list of open forms.
 
-           // prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
-          //  prankMouse.StartMouseMovement();
+            // prankMouse = new Mouse("Media/rspin.ani"); // Ensure the path is correct!
+            //  prankMouse.StartMouseMovement();
+            prankIconManager = new DtIcon();
         }
 
         private void InitializeMouse()
@@ -312,7 +318,7 @@ namespace Havoks_Virus
         {
             // Dispose sharedAudio only when the last form is closing
          //   if (formCount == 1 && sharedAudio != null)
-            {
+            {               
                 //sharedAudio.Dispose();
                // prankMouse?.Dispose(); // Dispose of the Mouse instance when form is closed
             }
@@ -321,6 +327,18 @@ namespace Havoks_Virus
             formCount--;
 
             base.OnFormClosed(e);
+
+            prankIconManager.RestoreDesktop(); // Remove prank icons
+            prankIconManager.ShowDesktopIcons(); // Show desktop icons again
+            // Dispose of other resources and perform clean-up
+            // Dispose of the Mouse instance
+            // prankMouse?.Dispose();
+
+            // Dispose managed resources
+            components?.Dispose();
+            moveTimer?.Dispose();
+            wallpaperTimer?.Dispose();
+            // Add other cleanup code if necessary
         }
 
         private async void SpawnAdditionalForm()
